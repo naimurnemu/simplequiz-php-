@@ -7,13 +7,31 @@ if (!isset($_SESSION['admin_logged_in'])) {
 
 $message = '';
 
+if (!isset($_GET['id'])) {
+    die("Invalid request.");
+}
+
+$id = $_GET['id'];
+
+
+$stmt = $conn->prepare("SELECT * FROM questions WHERE id = ?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$result = $stmt->get_result();
+$questionData = $result->fetch_assoc();
+$stmt->close();
+
+if (!$questionData) {
+    die("Question not found.");
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $question = $_POST['question'];
     $opt1 = $_POST['opt1'];
     $opt2 = $_POST['opt2'];
     $opt3 = $_POST['opt3'];
     $opt4 = $_POST['opt4'];
-    $selected = $_POST['answer']; 
+    $selected = $_POST['answer'];
 
     $options = [
         'opt1' => $opt1,
@@ -22,25 +40,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         'opt4' => $opt4
     ];
 
-    $answer = $options[$selected]; 
+    $answer = $options[$selected];
 
-    $stmt = $conn->prepare("INSERT INTO questions (question, opt1, opt2, opt3, opt4, answer) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssss", $question, $opt1, $opt2, $opt3, $opt4, $answer);
+    $stmt = $conn->prepare("UPDATE questions SET question=?, opt1=?, opt2=?, opt3=?, opt4=?, answer=? WHERE id=?");
+    $stmt->bind_param("ssssssi", $question, $opt1, $opt2, $opt3, $opt4, $answer, $id);
 
     if ($stmt->execute()) {
-        $message = "<p class='success'>✅ Question added successfully.</p>";
+        $message = "<p class='success'>✅ Question updated successfully.</p>";
+        // Refresh question data
+        $questionData = [
+            'question' => $question,
+            'opt1' => $opt1,
+            'opt2' => $opt2,
+            'opt3' => $opt3,
+            'opt4' => $opt4,
+            'answer' => $answer
+        ];
     } else {
         $message = "<p class='error'>❌ Error: " . $conn->error . "</p>";
     }
+
     $stmt->close();
 }
 
+function getSelected($correctAnswer, $option, $value) {
+    return ($correctAnswer === $value) ? 'selected' : '';
+}
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Add Question</title>
+    <title>Edit Question</title>
     <link rel="stylesheet" href="../css/style.css" />
     <style>
         body {
@@ -62,18 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         .form-group {
             margin-bottom: 20px;
-            width: 100%;
-            margin: 0 auto 20px;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto;
         }
         textarea, input[type="text"], select {
-            /* width: 100%; */
+            width: 100%;
             padding: 12px;
             font-size: 16px;
             border: 1px solid #ccc;
@@ -117,37 +139,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="container">
-        <h2>Add New Question</h2>
+        <h2>Edit Question</h2>
         <?php if (!empty($message)) echo $message; ?>
         <form method="post">
             <div class="form-group">
-                <textarea name="question" rows="3" placeholder="Enter your question" required></textarea>
+                <textarea name="question" rows="3" required><?php echo htmlspecialchars($questionData['question']); ?></textarea>
             </div>
             <div class="form-group">
-                <input type="text" name="opt1" placeholder="Option 1" required>
+                <input type="text" name="opt1" value="<?php echo htmlspecialchars($questionData['opt1']); ?>" required>
             </div>
             <div class="form-group">
-                <input type="text" name="opt2" placeholder="Option 2" required>
+                <input type="text" name="opt2" value="<?php echo htmlspecialchars($questionData['opt2']); ?>" required>
             </div>
             <div class="form-group">
-                <input type="text" name="opt3" placeholder="Option 3" required>
+                <input type="text" name="opt3" value="<?php echo htmlspecialchars($questionData['opt3']); ?>" required>
             </div>
             <div class="form-group">
-                <input type="text" name="opt4" placeholder="Option 4" required>
+                <input type="text" name="opt4" value="<?php echo htmlspecialchars($questionData['opt4']); ?>" required>
             </div>
             <div class="form-group">
                 <label for="answer">Correct Answer:</label>
-                <select name="answer" id="answer" required class="form-control">
+                <select name="answer" id="answer" required>
                     <option value="">-- Select Correct Answer --</option>
-                    <option value="opt1">Option 1</option>
-                    <option value="opt2">Option 2</option>
-                    <option value="opt3">Option 3</option>
-                    <option value="opt4">Option 4</option>
+                    <option value="opt1" <?= ($questionData['answer'] == $questionData['opt1']) ? 'selected' : '' ?>>Option 1</option>
+                    <option value="opt2" <?= ($questionData['answer'] == $questionData['opt2']) ? 'selected' : '' ?>>Option 2</option>
+                    <option value="opt3" <?= ($questionData['answer'] == $questionData['opt3']) ? 'selected' : '' ?>>Option 3</option>
+                    <option value="opt4" <?= ($questionData['answer'] == $questionData['opt4']) ? 'selected' : '' ?>>Option 4</option>
                 </select>
             </div>
-            <button type="submit">Add Question</button>
+            <button type="submit">Update Question</button>
         </form>
-        <a href="dashboard.php">⬅ Back to Dashboard</a>
+        <a href="view_questions.php">⬅ Back to Questions</a>
     </div>
 </body>
 </html>

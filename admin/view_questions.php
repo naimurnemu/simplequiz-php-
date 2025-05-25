@@ -5,7 +5,6 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
-// Delete question
 if (isset($_GET['delete'])) {
     $id = $_GET['delete'];
     $conn->query("DELETE FROM questions WHERE id = $id");
@@ -55,11 +54,17 @@ $questions = $conn->query("SELECT * FROM questions");
         tr:nth-child(even) {
             background: #f2f2f2;
         }
-        a.delete {
-            color: #dc3545;
+        a.delete, a.edit {
+            margin-right: 10px;
             text-decoration: none;
         }
-        a.delete:hover {
+        a.delete {
+            color: #dc3545;
+        }
+        a.edit {
+            color: #28a745;
+        }
+        a:hover {
             text-decoration: underline;
         }
         .back {
@@ -92,6 +97,7 @@ $questions = $conn->query("SELECT * FROM questions");
                 <td><?php echo htmlspecialchars($row['question']); ?></td>
                 <td><?php echo htmlspecialchars($row['answer']); ?></td>
                 <td>
+                    <a class="edit" href="edit_question.php?id=<?php echo $row['id']; ?>">Edit</a>
                     <a class="delete" href="?delete=<?php echo $row['id']; ?>" onclick="return confirm('Are you sure you want to delete this question?')">Delete</a>
                 </td>
             </tr>
